@@ -1,8 +1,25 @@
-use anchor_lang::prelude::*;
-use anchor_lang::Bumps;
-
+#![allow(unexpected_cfgs)]
 #[allow(deprecated)]
-declare_id!("7wefq185sMy6DayVsHJag2WEr56Lg6uKYoTT16qbkNDG");
+
+use anchor_lang::prelude::*;
+
+declare_id!("8qVqFTtdywEycA6cLfsccoHLSMUAZsHuEvfrWKnWSpEW");
+
+#[account]
+pub struct VaultState {
+    pub owner: Pubkey,   // who created/owns the vault
+    pub vault: Pubkey,   // PDA address of the Vault account
+    pub state_bump: u8,  // PDA bump seed
+    pub vault_bump: u8,  // bump for the Vault PDA
+    pub balance: u64,    // total lamports stored (bookkeeping)
+}
+
+impl VaultState {
+    pub const LEN: usize = 32 + 32 + 1 + 1 + 8;
+}
+
+#[account]
+pub struct Vault {}
 
 #[program]
 pub mod vault {
@@ -32,7 +49,7 @@ pub struct InitializeVault<'info>
     // 1. VaultState PDA (metadata)
     #[account(init,
         payer = owner,
-        space = 8 + VaultState::INIT_SPACE,
+        space = 8 + VaultState::LEN,
         seeds = [b"vault_state", owner.key().as_ref()],
         bump)]
     pub vault_state: Account<'info, VaultState>,
@@ -154,12 +171,11 @@ impl<'info> Withdraw<'info> {
         let owner = self.owner.key();
 
         // Prepare PDA signer seeds
-        let vault_seeds = &[
+        /*let vault_seeds = &[
             b"vault",
             owner.as_ref(),
             &[self.vault_state.vault_bump],
-        ];
-        let signer_seeds = &[vault_seeds];
+        ];*/
 
         // Move lamports: vault → owner
         **self.vault.to_account_info().try_borrow_mut_lamports()? -= amount;
@@ -224,18 +240,6 @@ impl<'info> CloseVault<'info>{
     }
 }
 
-#[account]
-#[derive(InitSpace)]
-pub struct VaultState {
-    pub owner: Pubkey,   // who created/owns the vault
-    pub vault: Pubkey,   // PDA address of the Vault account
-    pub state_bump: u8,  // PDA bump seed
-    pub vault_bump: u8,  // bump for the Vault PDA
-    pub balance: u64,    // total lamports stored (bookkeeping)
-}
-
-#[account]
-pub struct Vault {}
 
 #[error_code]
 pub enum VaultError {
